@@ -1,0 +1,136 @@
+{
+  "project_name": "PMOS • WMEU — Meme Civilization Engine",
+  "theme": "Dark Mode (Mandatory)",
+  "archetype": "Archetype 7 (Electric & Neon) + Archetype 4 (Swiss & High-Contrast Terminal)",
+  "aesthetic_vision": "NASA mission ops meets sci-fi terminal meets blockchain dashboard. A highly dense, operator-grade cosmic-tech UI. Deep space indigo base with neon cyan/magenta glowing accents, JSON viewers everywhere, and stark terminal typography.",
+  "typography": {
+    "font_imports": [
+      "@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Rajdhani:wght@400;500;600;700&display=swap');"
+    ],
+    "headings": {
+      "family": "'Rajdhani', sans-serif",
+      "style": "High-tech, squarish, condensed. All major titles, panel headers, and metric numbers must use Rajdhani. Use uppercase with generous tracking (tracking-wider) for small subheadings to mimic terminal readouts.",
+      "sizes": {
+        "h1": "text-4xl sm:text-5xl font-bold tracking-tight",
+        "h2": "text-2xl sm:text-3xl font-semibold",
+        "h3": "text-xl sm:text-2xl font-semibold",
+        "h4": "text-sm sm:text-base uppercase tracking-widest text-cyan-400"
+      }
+    },
+    "body": {
+      "family": "'JetBrains Mono', monospace",
+      "style": "Strictly monospaced body text for the ultimate developer/operator console feel.",
+      "sizes": {
+        "base": "text-sm",
+        "small": "text-xs",
+        "data": "text-xs leading-relaxed"
+      }
+    }
+  },
+  "colors": {
+    "background": {
+      "base": "#05050A",
+      "surface": "#0B0C15",
+      "surface_elevated": "#111322"
+    },
+    "accents": {
+      "primary": "#00F0FF",
+      "primary_glow": "rgba(0, 240, 255, 0.3)",
+      "secondary": "#FF00FF",
+      "secondary_glow": "rgba(255, 0, 255, 0.3)",
+      "tertiary": "#7000FF"
+    },
+    "status": {
+      "idle": "#4A4D6B",
+      "running": "#00F0FF",
+      "success": "#00FF66",
+      "warning": "#FFB800",
+      "error": "#FF003C"
+    },
+    "text": {
+      "primary": "#E2E8F0",
+      "secondary": "#94A3B8",
+      "muted": "#475569"
+    },
+    "syntax_highlighting": {
+      "key": "#00F0FF",
+      "string": "#00FF66",
+      "number": "#FF00FF",
+      "boolean": "#FFB800",
+      "null": "#FF003C"
+    }
+  },
+  "layout_and_spacing": {
+    "strategy": "The 'Control Room' Grid Protocol. Highly dense, data-correlation focused. All space must be utilized efficiently.",
+    "container_styles": {
+      "base": "bg-[#0B0C15] border border-[#111322]",
+      "elevated": "bg-[#111322]/80 backdrop-blur-xl border border-cyan-500/20 shadow-[0_0_15px_rgba(0,240,255,0.05)]",
+      "glass": "bg-[#05050A]/60 backdrop-blur-2xl border border-white/5"
+    },
+    "spacing_scale": {
+      "panels": "p-4 sm:p-6",
+      "gap": "gap-4 sm:gap-6"
+    }
+  },
+  "components": {
+    "cards": {
+      "style": "Retro-Futurism Terminal Look. Sharp edges (rounded-none or max rounded-sm). 1px border. Dark indigo background. Use neon cyan/magenta borders selectively for active or hovered cards."
+    },
+    "buttons": {
+      "primary": "bg-transparent border border-cyan-400 text-cyan-400 hover:bg-cyan-400 hover:text-black transition-all shadow-[0_0_10px_rgba(0,240,255,0.2)] hover:shadow-[0_0_20px_rgba(0,240,255,0.6)] font-Rajdhani font-bold tracking-wider uppercase",
+      "secondary": "bg-[#111322] border border-[#4A4D6B] text-slate-300 hover:border-magenta-400 hover:text-magenta-400 transition-colors font-Rajdhani uppercase tracking-widest",
+      "danger": "bg-transparent border border-[#FF003C] text-[#FF003C] hover:bg-[#FF003C] hover:text-white transition-colors uppercase"
+    },
+    "json_viewer": {
+      "container": "bg-[#05050A] border border-[#111322] p-4 font-JetBrains Mono text-xs overflow-x-auto rounded-sm",
+      "interaction": "Include 'Copy to Clipboard' icon button in top right. Make keys cyan, strings green, numbers magenta."
+    },
+    "badges": {
+      "style": "Small, uppercase, sharply readable tags. text-[10px] font-bold tracking-widest px-2 py-1 border rounded-sm",
+      "idle": "border-[#4A4D6B] text-[#4A4D6B]",
+      "running": "border-cyan-400 text-cyan-400 shadow-[0_0_5px_rgba(0,240,255,0.5)] animate-pulse",
+      "success": "border-[#00FF66] text-[#00FF66] shadow-[0_0_5px_rgba(0,255,102,0.3)]",
+      "error": "border-[#FF003C] text-[#FF003C] shadow-[0_0_5px_rgba(255,0,60,0.3)]"
+    },
+    "navigation": {
+      "style": "Top header with fixed positioning (z-50). Dark glassmorphism (`bg-[#05050A]/80 backdrop-blur-md`). Bottom border 1px solid cyan-500/20. Must include brand logo (PMOS • WMEU text) and operator login status."
+    }
+  },
+  "icons": {
+    "library": "lucide-react",
+    "style": "Use stroke-width 1.5 to keep them looking sharp and technical. Color them with neon accents when active."
+  },
+  "motion_and_interaction": {
+    "hover": "Subtle border color shifts (grey to cyan/magenta) and soft box-shadow glows.",
+    "pipeline_animation": "When the 15-engine pipeline runs, use a staggered sequence. Active engine pulses cyan. Completed engines turn green.",
+    "accessibility": "Respect prefers-reduced-motion. Ensure focus states have a 2px solid cyan ring offset by 2px (bg-black)."
+  },
+  "images": {
+    "hero_background": {
+      "url": "https://images.unsplash.com/photo-1464802686167-b939a6910659?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjY2NzN8MHwxfHNlYXJjaHwxfHxkZWVwJTIwc3BhY2UlMjBnYWxheHl8ZW58MHx8fHwxNzgyMjQ2NjIwfDA&ixlib=rb-4.1.0&q=85",
+      "description": "Deep space digital galaxy wallpaper. Use with extreme opacity (bg-black/80) as a backdrop for the Control Deck to give a subtle cosmic feel without overpowering the data."
+    },
+    "data_engine_abstract": {
+      "url": "https://images.pexels.com/photos/30547568/pexels-photo-30547568.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+      "description": "Abstract glowing digital circuitry. Can be used in the Meme Asset Viewer or Rarity Calculator headers as a clipped background overlay."
+    },
+    "server_console": {
+      "url": "https://images.unsplash.com/photo-1716351659964-2aa74bf1cd1e?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDk1NzZ8MHwxfHNlYXJjaHwzfHxmdXR1cmlzdGljJTIwc2VydmVyJTIwY29uc29sZXxlbnwwfHx8fDE3ODIyNDY2MjB8MA&ixlib=rb-4.1.0&q=85",
+      "description": "Curved glass server room. Great for the Debug Dashboard or Governance Panel hero banner."
+    }
+  },
+  "legal": {
+    "attribution": "© Patrick Buckley 2026. All rights reserved.",
+    "entity": "Buckley Labs LLC (placeholder/future)"
+  },
+  "instructions_to_main_agent": [
+    "CRITICAL: Do NOT use Inter, Roboto, or Open Sans. Add the Google Fonts import for Rajdhani and JetBrains Mono in index.css.",
+    "Add tailwind configuration for font families: font-sans ('Rajdhani', sans-serif) and font-mono ('JetBrains Mono', monospace).",
+    "All functional blocks (Engine Health, Canon Integrity, Timeline) must be wrapped in structural dark cards with 1px borders.",
+    "When building the 15-Engine Pipeline visualization, represent it as a grid or sequential flow of nodes. Each node needs clear Idle/Running/Success/Error states.",
+    "JSON Viewers are central to this app. Build a reusable component that receives a JSON object and renders it with the specified syntax highlighting colors.",
+    "Ensure all interactive elements and major data containers include `data-testid` attributes (e.g., `data-testid=\"run-pmos-button\"`, `data-testid=\"engine-node-blueprint\"`).",
+    "Do not use default Shadcn themes. Strip Vercel-like styling and replace it with hard corners, deep black backgrounds, and cyan/magenta neon borders.",
+    "Use Recharts (or Shadcn Charts) for the Chart Viewer, but style the lines/bars with neon cyan and magenta strokes over deep indigo grid backgrounds."
+  ]
+}
