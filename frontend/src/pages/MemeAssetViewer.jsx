@@ -34,6 +34,8 @@ export default function MemeAssetViewer() {
     try {
       await api.post(`/meme-assets/${active.id}/approve`);
       toast.success("Asset entered Canon Vault");
+      const { data: refreshed } = await api.get(`/meme-assets/${active.id}`);
+      setActive(refreshed);
       load();
     } catch (e) {
       toast.error(formatApiErrorDetail(e.response?.data?.detail) || e.message);
