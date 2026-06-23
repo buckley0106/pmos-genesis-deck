@@ -1,0 +1,44 @@
+{
+  "summary": "Full backend + frontend e2e for PMOS • WMEU. 18/18 backend pytests pass (fixed 3 ObjectId serialization bugs). All 12 critical UI flows verified: dashboard run-pmos (15 engines + rarity), admin login + admin badge, governance proposal+vote, meme asset viewer + admin canon approval, control deck, charts, debug, legal docs (5 docs + downloads), rarity calc, economic sim, canon vault, logout + gated governance.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "POST /api/governance/proposals", "issue": "Returned 500 due to motor insert_one mutating doc with non-serializable ObjectId _id (FIXED in this run)"},
+      {"endpoint": "POST /api/governance/amendments", "issue": "Same ObjectId leak (FIXED)"},
+      {"endpoint": "log_system_event helper (POST /api/pmos/system-events)", "issue": "Same ObjectId leak (FIXED)"}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "MemeAssetViewer", "issue": "After admin clicks 'approve-canon-button', the active asset card does not optimistically update to show the 'view-certificate' link until the page is reloaded or another asset is reselected.", "selector": "[data-testid='approve-canon-button']", "priority": "LOW"}
+    ],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/backend_test.py",
+    "/app/test_reports/pytest/pytest_results.xml"
+  ],
+  "action_items": [
+    "Optional UX polish: after POST /api/meme-assets/{id}/approve succeeds, refetch the active asset in MemeAssetViewer.jsx so the certificate link and canon badge appear without manual reload.",
+    "Consider centralizing the '_id pop' pattern (e.g., a small helper) since motor mutates insert payloads — currently fixed inline in create_proposal, add_amendment, and log_system_event."
+  ],
+  "critical_code_review_comments": [
+    "server.py is ~1030 lines — fine for now but already large; splitting into routers (auth/pmos/governance/canon/docs) would improve maintainability before more endpoints are added.",
+    "_approve_canon in server.py mutates the in-memory asset (sets canon_approved + rarity) before persisting; this is correct now but should not be relied on for later concurrent updates — consider returning the updated asset doc to the caller.",
+    "compute_rarity rounds canon_bonus by int(score * 1.5) but adds an extra 'canon_bonus_x1.5: True' key into breakdown — clients should treat breakdown values as mixed (numbers + booleans). Consider keeping breakdown homogeneous.",
+    "Governance vote endpoint uses (proposal_id, voter_email) unique index but DB seed for that index is created in startup — ensure that index existed before the test workload (it does after first startup).",
+    "ENGINE_VERSION is hard-coded to 1.0.0 globally; per-engine versioning would help future debugPMOS triage."
+  ],
+  "updated_files": [
+    "/app/backend/server.py (popped _id in create_proposal, add_amendment, log_system_event)",
+    "/app/backend/tests/backend_test.py (new)"
+  ],
+  "success_rate": {"backend": "100% (18/18)", "frontend": "100% on tested flows (12/12 critical journeys)"},
+  "test_credentials": "Admin patrick@buckleylabs.io / WMEU-2026-Admin! — verified working; new member accounts registerable on demand.",
+  "seed_data_creation": "Test seeds 'XYZ', 'STATUS_SEED', 'D', 'CANON_SEED', 'NON_ADMIN_SEED', 'TEST_FIXTURE_SEED', 'UI_TEST_SEED' generate deterministic Meme Assets in DB. A few TEST_ proposals + TEST_member_* users were created and remain.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Routes in App.js are /assets (NOT /meme-assets) and /control-deck (NOT /control). API still uses /api/meme-assets. Asset list testids: [data-testid^='asset-item-']. Approve button: [data-testid='approve-canon-button'] (admin only). Vote buttons: [data-testid^='vote-yes-' / 'vote-no-' / 'vote-abstain-']. Dashboard testids: dashboard-seed-input, run-pmos-button, dashboard-result-json. Auth: pmos_token in localStorage; login page at /login with auth-email-input / auth-password-input / auth-submit-button / auth-mode-toggle. Backend pytest suite: pytest backend/tests/backend_test.py.",
+  "rca of the issue": "Root cause for the only backend bug discovered: motor's insert_one mutates the input dict in-place by attaching a BSON ObjectId under '_id'. FastAPI's jsonable_encoder then fails serializing ObjectId, producing HTTP 500. Reproduction: POST /api/governance/proposals with a valid Bearer token would return 500 prior to the fix. Mitigation applied: doc.pop('_id', None) after every insert that returns the doc."
+}

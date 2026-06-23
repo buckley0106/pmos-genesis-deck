@@ -1,55 +1,43 @@
-import { useEffect } from "react";
 import "@/App.css";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import axios from "axios";
-import { HOME } from "@/constants/testIds";
-
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
-const API = `${BACKEND_URL}/api`;
-
-const Home = () => {
-  const helloWorldApi = async () => {
-    try {
-      const response = await axios.get(`${API}/`);
-      console.log(response.data.message);
-    } catch (e) {
-      console.error(e, `errored out requesting / api`);
-    }
-  };
-
-  useEffect(() => {
-    helloWorldApi();
-  }, []);
-
-  return (
-    <div>
-      <header className="App-header">
-        <a
-          data-testid={HOME.emergentLink}
-          className="App-link"
-          href="https://emergent.sh"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <img src="https://avatars.githubusercontent.com/in/1201222?s=120&u=2686cf91179bbafbc7a71bfbc43004cf9ae1acea&v=4" />
-        </a>
-        <p className="mt-5">Building something incredible ~!</p>
-      </header>
-    </div>
-  );
-};
+import { Toaster } from "sonner";
+import { AuthProvider } from "@/context/AuthContext";
+import { Layout } from "@/components/Layout";
+import Dashboard from "@/pages/Dashboard";
+import MemeAssetViewer from "@/pages/MemeAssetViewer";
+import CanonVault from "@/pages/CanonVault";
+import Governance from "@/pages/Governance";
+import RarityCalculator from "@/pages/RarityCalculator";
+import EconomicSimulator from "@/pages/EconomicSimulator";
+import ChartViewer from "@/pages/ChartViewer";
+import ControlDeck from "@/pages/ControlDeck";
+import DebugDashboard from "@/pages/DebugDashboard";
+import Legal from "@/pages/Legal";
+import Login from "@/pages/Login";
 
 function App() {
   return (
-    <div className="App">
+    <AuthProvider>
       <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Home />}>
-            <Route index element={<Home />} />
-          </Route>
-        </Routes>
+        <Layout>
+          <Routes>
+            <Route path="/" element={<Dashboard />} />
+            <Route path="/assets" element={<MemeAssetViewer />} />
+            <Route path="/assets/:id" element={<MemeAssetViewer />} />
+            <Route path="/canon" element={<CanonVault />} />
+            <Route path="/governance" element={<Governance />} />
+            <Route path="/rarity" element={<RarityCalculator />} />
+            <Route path="/economic" element={<EconomicSimulator />} />
+            <Route path="/charts" element={<ChartViewer />} />
+            <Route path="/control-deck" element={<ControlDeck />} />
+            <Route path="/debug" element={<DebugDashboard />} />
+            <Route path="/legal" element={<Legal />} />
+            <Route path="/login" element={<Login />} />
+          </Routes>
+        </Layout>
+        <Toaster theme="dark" position="top-right" toastOptions={{ style: { background: "#0B0C15", border: "1px solid #1A1D2E", color: "#E2E8F0", borderRadius: 2, fontFamily: "JetBrains Mono, monospace" } }} />
       </BrowserRouter>
-    </div>
+    </AuthProvider>
   );
 }
 
