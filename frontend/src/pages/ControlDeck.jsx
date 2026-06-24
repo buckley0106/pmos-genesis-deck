@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { EngineNode } from "@/components/EngineNode";
+import WebhookManager from "@/components/WebhookManager";
 import { ShieldCheck, Activity, FileWarning, BookOpen, Vault } from "lucide-react";
 
 export default function ControlDeck() {
@@ -39,12 +40,14 @@ export default function ControlDeck() {
 
       <section data-testid="engine-health-panel">
         <h2 className="pmos-h3 mb-3">Engine Health</h2>
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 lg:grid-cols-6 gap-3">
           {engines.map((s, i) => (
             <EngineNode key={s.engine_name} name={s.engine_name} status={s.status} index={i} version={s.engine_version} lastRun={s.last_run} />
           ))}
         </div>
       </section>
+
+      <WebhookManager />
 
       <div className="grid lg:grid-cols-2 gap-5">
         <section className="pmos-card p-4" data-testid="event-timeline-panel">

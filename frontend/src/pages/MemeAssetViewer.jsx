@@ -107,9 +107,14 @@ export default function MemeAssetViewer() {
                       </button>
                     )}
                     {active.canon_approved && (
-                      <Link to="/canon" className="pmos-btn-secondary flex items-center gap-1.5" data-testid="view-certificate">
-                        <FileText size={12} /> View Certificate
-                      </Link>
+                      <div className="flex gap-2">
+                        <Link to={`/public/${active.id}`} className="pmos-btn-primary flex items-center gap-1.5" data-testid="view-public-canon">
+                          <ShieldCheck size={12} /> Public canon page
+                        </Link>
+                        <Link to="/canon" className="pmos-btn-secondary flex items-center gap-1.5" data-testid="view-certificate">
+                          <FileText size={12} /> Certificate
+                        </Link>
+                      </div>
                     )}
                   </div>
                 </div>

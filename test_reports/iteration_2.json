@@ -1,0 +1,62 @@
+{
+  "summary": "v2.0 upgrade tested: 26 engines + SSE + canon flow + OG PNG + marketplace + webhooks + safety. Backend 18/20 pytests pass. Frontend: dashboard SSE run (26 engines + result JSON), marketplace anon/admin, public /public/{id} page, control deck 26 cells + WebhookManager (admin), debug all 26 green — ALL pass. Two backend failures share one root cause: the top-level /canon/{id} route is served by the React frontend (not FastAPI) because the K8s ingress routes only /api/* to backend; result is HTML 200 but it's the SPA shell, not the server-rendered canon page with OG meta. Critical to fix before Day-1 social shares.",
+  "backend_issues": {
+    "critical": [
+      {
+        "endpoint": "GET /canon/{asset_id} (top-level, not /api)",
+        "issue": "Route registered on FastAPI app (not under /api router) is unreachable via public REACT_APP_BACKEND_URL. K8s ingress proxies only /api/* to port 8001. Public URL returns the React index.html (200) for /canon/{id}, so og:image / og:url meta + crawler share previews + entire Layer-3 'public CDN substitute' feature is broken. Verified: localhost:8001/canon/<id> → backend HTML (or 403/404); public /canon/<id> → React SPA shell. Move route to @api.get('/canon/{asset_id}') (under /api) or configure ingress to passthrough.",
+        "priority": "CRITICAL"
+      }
+    ],
+    "minor": [
+      {
+        "endpoint": "POST /api/meme-assets/{id}/approve",
+        "issue": "Admin approve does NOT enforce Safety engine — assets with safe:false (e.g. seed 'kill someone') still enter canon, generate /canon page, and render their unsafe seed verbatim in the public HTML. Marketplace listing is correctly blocked. Recommend: reject approval if engines.Safety.safe == false (or require explicit override flag)."
+      }
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {
+        "component": "Control Deck — Engine Health card",
+        "issue": "Displays '26/15' (hard-coded denominator '15' left over from v1). Should be '26/26' or use ENGINE_ORDER length.",
+        "selector": "Control Deck → ENGINE HEALTH stat",
+        "priority": "LOW"
+      }
+    ],
+    "integration_issues": [
+      {
+        "flow": "Public Canon Page – 'Open server page' button",
+        "issue": "Targets /canon/{id} which currently returns the SPA shell (see backend critical). Once backend route is fixed/relocated, update the button URL accordingly.",
+        "affected_selectors": ["[data-testid='public-open-server-page']"]
+      }
+    ],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/backend_test.py",
+    "/app/test_reports/pytest/pytest_results.xml"
+  ],
+  "action_items": [
+    "HIGH: Move public canon HTML to /api/canon/{asset_id} (or add a second alias under /api) so K8s ingress routes it to FastAPI. Update PUBLIC_BASE_URL/og:url and the frontend 'Open server page' link accordingly.",
+    "MEDIUM: In _approve_canon, refuse approval when engines.Safety.safe is False (or require an admin force flag).",
+    "LOW: Fix Control Deck 'Engine Health' denominator from 15 → 26 (or pull from ENGINE_ORDER length)."
+  ],
+  "critical_code_review_comments": [
+    "server.py is now ~1316 lines — overdue for split into routers/pmos.py, routers/canon.py, routers/marketplace.py, routers/webhooks.py, routers/auth.py.",
+    "Public canon route is the only non-/api top-level route — fragile against the ingress contract. Either keep all public routes under /api or document an explicit ingress rule.",
+    "_approve_canon swallows Safety result; couple it with the Safety engine for consistency with the marketplace flow.",
+    "Pillow OG image regen on miss is good, but render_og can throw if font assets unavailable in container — should be wrapped to return a placeholder PNG rather than 500.",
+    "Hard-coded SAFETY_BLOCKLIST tuple lives in server.py; move to a config / collection for runtime updates."
+  ],
+  "updated_files": [
+    "/app/backend/tests/backend_test.py (rewritten for v2: 20 tests covering 26 engines, SSE, canon HTML/PNG/JSON, marketplace, safety, webhooks)"
+  ],
+  "success_rate": {"backend": "90% (18/20 — both failures are one root cause)", "frontend": "100% on tested flows (dashboard SSE, marketplace anon, public canon /public/{id}, control deck + webhook manager admin, debug 26 engines)"},
+  "test_credentials": "Admin patrick@buckleylabs.io / WMEU-2026-Admin! verified. Member tokens created on the fly via /api/auth/register.",
+  "seed_data_creation": "Test seeds created (TEST_V2_XYZ, TEST_CANON_AUTO, TEST_ADMIN_APPROVE, TEST_MEMBER_DENY, TEST_NOCANON_LIST, TEST_NOTCANON, TEST_NOTCANON2, 'kill someone', UI_V2_SSE, etc.). 1 canon-approved unsafe asset (seed='kill someone') is now in DB and renders on /public/{id} — consider purging or fixing safety gate first.",
+  "retest_needed": true,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Backend testing uses /app/backend/tests/backend_test.py with pytest (JUnit XML in /app/test_reports/pytest/). The two failing tests (test_canon_html_page, test_canon_html_403_for_non_canon) confirm the /canon/{id} ingress shadow issue — they will pass automatically once the route is moved under /api or ingress is updated. SSE test reads named events from event-stream (start, engine_start×26, engine_done×26, complete). Public canon JSON works at /api/public/canon/{id}.json. OG PNG at /api/public/og/{id}.png is verified (~PNG signature 0x89504E47).",
+  "rca of the issue": "Root cause: FastAPI declares @app.get('/canon/{asset_id}') at the top-level app, not on the /api APIRouter. The Kubernetes ingress in this environment is configured to forward only /api/* to the backend pod; anything else (including /canon/*) goes to the React frontend at port 3000. The frontend's React Router has no '/canon/:id' route (only '/canon' for CanonVault), so the SPA shell is served as 200 with default React index.html, masquerading as a successful response. Reproduction: curl http://localhost:8001/canon/<any> → backend response (200/403/404 depending on canon state); curl <PUBLIC_URL>/canon/<any> → React SPA HTML (200, contains 'A product of emergent.sh' meta, no og:image meta). Mitigation: move the route to api.get('/canon/{asset_id}') (under the /api router) — or expose it at /api/public/canon/{id}.html — and update PUBLIC_BASE_URL + the Open-Server-Page frontend link to use that path. After fix, re-run pytest to confirm both failing tests pass."
+}

@@ -1,20 +1,21 @@
 import { NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import {
-  LayoutDashboard, Boxes, Vault, Scale, Sigma, LineChart, Activity, Bug, ScrollText, LogIn, LogOut, ShieldCheck,
+  LayoutDashboard, Boxes, Vault, Scale, Sigma, LineChart, Activity, Bug, ScrollText, LogIn, LogOut, ShieldCheck, Store, Globe2,
 } from "lucide-react";
 
 const NAV = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard, id: "dashboard" },
-  { to: "/assets", label: "Meme Assets", icon: Boxes, id: "assets" },
+  { to: "/assets", label: "Assets", icon: Boxes, id: "assets" },
   { to: "/canon", label: "Canon Vault", icon: Vault, id: "canon" },
+  { to: "/marketplace", label: "Market", icon: Store, id: "marketplace" },
   { to: "/governance", label: "Governance", icon: Scale, id: "governance" },
-  { to: "/rarity", label: "Rarity Calc", icon: Sigma, id: "rarity" },
-  { to: "/economic", label: "Economic Sim", icon: Activity, id: "economic" },
-  { to: "/charts", label: "Chart Viewer", icon: LineChart, id: "charts" },
-  { to: "/control-deck", label: "Control Deck", icon: ShieldCheck, id: "control-deck" },
+  { to: "/rarity", label: "Rarity", icon: Sigma, id: "rarity" },
+  { to: "/economic", label: "Econ Sim", icon: Activity, id: "economic" },
+  { to: "/charts", label: "Charts", icon: LineChart, id: "charts" },
+  { to: "/control-deck", label: "Control", icon: ShieldCheck, id: "control-deck" },
   { to: "/debug", label: "Debug", icon: Bug, id: "debug" },
-  { to: "/legal", label: "Legal & Docs", icon: ScrollText, id: "legal" },
+  { to: "/legal", label: "Legal", icon: ScrollText, id: "legal" },
 ];
 
 export function Layout({ children }) {

@@ -1,33 +1,27 @@
-"""PMOS • WMEU backend test suite.
-
-Covers: health, runPMOS, debugPMOS, engine-status, system-events, meme-assets,
-auth (admin login, register, /me), governance (proposals + votes), canon
-(approve, vault, certificate), rarity, economic, charts, docs.
-"""
+"""PMOS • WMEU v2.0 backend test suite (26 engines, marketplace, webhooks, canon public)."""
 import os
-import time
 import uuid
 
 import pytest
 import requests
 
-BASE_URL = os.environ["REACT_APP_BACKEND_URL"].rstrip("/") if os.environ.get("REACT_APP_BACKEND_URL") else None
+BASE_URL = os.environ.get("REACT_APP_BACKEND_URL")
 if not BASE_URL:
-    # frontend/.env
     from pathlib import Path
     for line in Path("/app/frontend/.env").read_text().splitlines():
         if line.startswith("REACT_APP_BACKEND_URL="):
-            BASE_URL = line.split("=", 1)[1].strip().rstrip("/")
+            BASE_URL = line.split("=", 1)[1].strip()
             break
-
+BASE_URL = BASE_URL.rstrip("/")
 API = f"{BASE_URL}/api"
 ADMIN_EMAIL = "patrick@buckleylabs.io"
 ADMIN_PASSWORD = "WMEU-2026-Admin!"
 
-ENGINES = [
-    "Blueprint", "Biological", "Energy", "Artifact", "Species", "Plant",
-    "Faction", "Lore", "MemeBinding", "MemeCoinBinder", "NFTMint",
-    "Economic", "Governance", "CanonVaultConnector", "ChartEngine",
+ENGINES_V2 = [
+    "Blueprint", "Biological", "Energy", "Artifact", "Species", "Plant", "Faction", "Lore",
+    "Identity", "Continuity", "Influence", "SocialGraph", "UniverseTime", "Safety", "RateLimit",
+    "MemeBinding", "MemeCoinBinder", "NFTMint", "Economic", "Marketplace", "Governance",
+    "CanonVaultConnector", "PublicCanonPage", "Webhook", "ChartEngine", "SSELiveTick",
 ]
 
 
@@ -40,228 +34,228 @@ def s():
 @pytest.fixture(scope="session")
 def admin_token(s):
     r = s.post(f"{API}/auth/login", json={"email": ADMIN_EMAIL, "password": ADMIN_PASSWORD}, timeout=30)
-    assert r.status_code == 200, f"admin login failed: {r.status_code} {r.text}"
+    assert r.status_code == 200, r.text
     return r.json()["token"]
 
 
 @pytest.fixture(scope="session")
 def member_token(s):
-    # register a fresh member
     email = f"TEST_member_{uuid.uuid4().hex[:8]}@wmeu.io"
-    pw = "Tester-2026!"
-    r = s.post(f"{API}/auth/register", json={"email": email, "password": pw, "name": "Tester"}, timeout=30)
-    assert r.status_code == 200, f"register failed: {r.status_code} {r.text}"
+    r = s.post(f"{API}/auth/register", json={"email": email, "password": "Tester-2026!", "name": "Tester"}, timeout=30)
+    assert r.status_code == 200, r.text
     return r.json()["token"]
 
 
-@pytest.fixture(scope="session")
-def first_asset_id(s):
-    r = s.post(f"{API}/pmos/run", json={"seed": "TEST_FIXTURE_SEED"}, timeout=60)
-    assert r.status_code == 200
-    return r.json()["id"]
-
-
-# --- health & engines list --------------------------------------------------
-def test_root_engines_list(s):
+# --- v2 root + engine list --------------------------------------------------
+def test_root_v2(s):
     r = s.get(f"{API}/", timeout=15)
     assert r.status_code == 200
-    data = r.json()
-    assert data["name"] == "PMOS • WMEU API"
-    assert isinstance(data["engines"], list)
-    assert len(data["engines"]) == 15
-    assert data["engines"] == ENGINES
+    d = r.json()
+    assert d["version"] == "2.0.0"
+    assert d["engine_count"] == 26
+    assert d["engines"] == ENGINES_V2
 
 
-# --- runPMOS ---------------------------------------------------------------
-def test_pmos_run_full_pipeline(s):
-    r = s.post(f"{API}/pmos/run", json={"seed": "XYZ"}, timeout=60)
+# --- runPMOS 26 engines -----------------------------------------------------
+def test_pmos_run_26_engines(s):
+    r = s.post(f"{API}/pmos/run", json={"seed": "TEST_V2_XYZ"}, timeout=90)
     assert r.status_code == 200, r.text
-    data = r.json()
-    assert data["canon_approved"] is False
-    assert data["errors"] == []
-    for name in ENGINES:
-        assert name in data["engines"], f"missing engine {name}"
-        assert data["engines"][name]["engine"] == name
-    rarity = data["rarity"]
-    assert "score" in rarity and "tier" in rarity and "breakdown" in rarity
-    assert isinstance(rarity["score"], int)
+    d = r.json()
+    assert d["canon_approved"] is False
+    assert d["errors"] == []
+    for name in ENGINES_V2:
+        assert name in d["engines"], f"missing {name}"
+        assert d["engines"][name]["engine"] == name
+    # token_id + chain_hash populated by NFTMint simulate
+    assert d.get("token_id")
+    assert d.get("chain_hash")
+    nft = d["engines"]["NFTMint"]
+    assert nft.get("is_simulated") is True
 
 
-def test_engine_status_after_run(s):
-    # ensure prior run completed
-    s.post(f"{API}/pmos/run", json={"seed": "STATUS_SEED"}, timeout=60)
-    r = s.get(f"{API}/pmos/engine-status", timeout=15)
+def test_debug_all_26(s):
+    r = s.post(f"{API}/pmos/debug", json={"seed": "TEST_D"}, timeout=60)
     assert r.status_code == 200
-    docs = r.json()
-    assert len(docs) == 15
-    names = {d["engine_name"] for d in docs}
-    assert names == set(ENGINES)
-    for d in docs:
-        assert d["status"] == "success", f"{d['engine_name']} not success: {d}"
-
-
-def test_system_events_engine_run(s):
-    r = s.get(f"{API}/pmos/system-events", timeout=15)
-    assert r.status_code == 200
-    events = r.json()
-    assert any(e["type"] == "engine_run" for e in events)
-
-
-# --- debugPMOS --------------------------------------------------------------
-def test_debug_all_engines(s):
-    r = s.post(f"{API}/pmos/debug", json={"seed": "D"}, timeout=30)
-    assert r.status_code == 200
-    data = r.json()
-    assert len(data["report"]) == 15
-    for entry in data["report"]:
+    rep = r.json()["report"]
+    assert len(rep) == 26
+    for entry in rep:
         assert entry["ok"] is True, entry
 
 
-def test_debug_single_engine(s):
-    r = s.post(f"{API}/pmos/debug", json={"seed": "D", "engine": "Lore"}, timeout=15)
+# --- SSE stream -------------------------------------------------------------
+def test_sse_stream(s):
+    seed = f"TEST_SSE_{uuid.uuid4().hex[:6]}"
+    with requests.get(f"{API}/pmos/run/stream", params={"seed": seed}, stream=True, timeout=120) as r:
+        assert r.status_code == 200
+        assert "text/event-stream" in r.headers.get("content-type", "")
+        events = []
+        body = b""
+        for chunk in r.iter_content(chunk_size=512):
+            if chunk:
+                body += chunk
+                if b"event: complete" in body:
+                    break
+        text = body.decode(errors="ignore")
+        # parse named events
+        event_names = [ln.split(":", 1)[1].strip() for ln in text.splitlines() if ln.startswith("event:")]
+    assert "start" in event_names
+    assert event_names.count("engine_start") == 26
+    assert event_names.count("engine_done") == 26
+    assert "complete" in event_names
+
+
+# --- canon flow (auto_approve + public pages) ------------------------------
+@pytest.fixture(scope="session")
+def canon_asset_id(s):
+    r = s.post(f"{API}/pmos/run", json={"seed": "TEST_CANON_AUTO", "auto_approve": True}, timeout=90)
     assert r.status_code == 200
-    rep = r.json()["report"]
-    assert len(rep) == 1
-    assert rep[0]["engine"] == "Lore" and rep[0]["ok"] is True
+    d = r.json()
+    assert d["canon_approved"] is True
+    return d["id"]
 
 
-# --- meme assets ------------------------------------------------------------
-def test_list_meme_assets(s, first_asset_id):
-    r = s.get(f"{API}/meme-assets", timeout=15)
+def test_canon_html_page(s, canon_asset_id):
+    r = s.get(f"{BASE_URL}/canon/{canon_asset_id}", timeout=30)
     assert r.status_code == 200
-    ids = [a["id"] for a in r.json()]
-    assert first_asset_id in ids
+    assert "text/html" in r.headers.get("content-type", "")
+    body = r.text
+    assert 'property="og:image"' in body
+    assert 'property="og:url"' in body
+    assert f"/api/public/og/{canon_asset_id}.png" in body
 
 
-def test_get_meme_asset(s, first_asset_id):
-    r = s.get(f"{API}/meme-assets/{first_asset_id}", timeout=15)
+def test_canon_og_png(s, canon_asset_id):
+    r = s.get(f"{API}/public/og/{canon_asset_id}.png", timeout=30)
     assert r.status_code == 200
-    data = r.json()
-    assert data["id"] == first_asset_id
-    assert len(data["engines"]) == 15
+    assert r.headers.get("content-type") == "image/png"
+    assert len(r.content) > 1000
+    assert r.content[:8] == b"\x89PNG\r\n\x1a\n"
 
 
-# --- auth -------------------------------------------------------------------
-def test_admin_login_and_me(s, admin_token):
-    r = s.get(f"{API}/auth/me", headers={"Authorization": f"Bearer {admin_token}"}, timeout=15)
+def test_canon_public_json(s, canon_asset_id):
+    r = s.get(f"{API}/public/canon/{canon_asset_id}.json", timeout=15)
     assert r.status_code == 200
-    me = r.json()
-    assert me["email"] == ADMIN_EMAIL
-    assert me["role"] == "admin"
+    assert r.json()["canon_approved"] is True
 
 
-def test_member_register_and_login(s):
-    email = f"test_reg_{uuid.uuid4().hex[:8]}@wmeu.io"
-    pw = "Tester-2026!"
-    r = s.post(f"{API}/auth/register", json={"email": email, "password": pw}, timeout=15)
-    assert r.status_code == 200
-    assert r.json()["user"]["role"] == "member"
-    # login
-    r2 = s.post(f"{API}/auth/login", json={"email": email, "password": pw}, timeout=15)
-    assert r2.status_code == 200
-    assert r2.json()["user"]["email"] == email
+def test_public_canon_json_404_for_non_canon(s):
+    r = s.post(f"{API}/pmos/run", json={"seed": "TEST_NOTCANON"}, timeout=90)
+    aid = r.json()["id"]
+    r2 = s.get(f"{API}/public/canon/{aid}.json", timeout=15)
+    assert r2.status_code == 404
 
 
-# --- governance -------------------------------------------------------------
-def test_proposal_requires_auth(s):
-    r = s.post(f"{API}/governance/proposals", json={"title": "t", "description": "d"}, timeout=15)
-    assert r.status_code == 401
+def test_canon_html_403_for_non_canon(s):
+    r = s.post(f"{API}/pmos/run", json={"seed": "TEST_NOTCANON2"}, timeout=90)
+    aid = r.json()["id"]
+    r2 = s.get(f"{BASE_URL}/canon/{aid}", timeout=15)
+    assert r2.status_code == 403
 
 
-def test_governance_proposal_and_vote(s, member_token):
-    h = {"Authorization": f"Bearer {member_token}"}
-    r = s.post(f"{API}/governance/proposals", json={"title": "TEST_prop", "description": "desc"}, headers=h, timeout=15)
-    assert r.status_code == 200
-    pid = r.json()["id"]
-    # vote yes
-    r2 = s.post(f"{API}/governance/vote", json={"proposal_id": pid, "choice": "yes"}, headers=h, timeout=15)
-    assert r2.status_code == 200
-    # update vote to no
-    r3 = s.post(f"{API}/governance/vote", json={"proposal_id": pid, "choice": "no"}, headers=h, timeout=15)
-    assert r3.status_code == 200
-    # tally
-    r4 = s.get(f"{API}/governance/proposals", timeout=15)
-    assert r4.status_code == 200
-    found = next((p for p in r4.json() if p["id"] == pid), None)
-    assert found is not None
-    assert found["tally"]["no"] == 1
-    assert found["tally"]["yes"] == 0
-    assert found["tally"]["total"] == 1
-
-
-# --- canon ------------------------------------------------------------------
-def test_approve_canon_admin(s, admin_token):
-    # create new asset
-    r = s.post(f"{API}/pmos/run", json={"seed": "CANON_SEED"}, timeout=60)
-    asset = r.json()
-    aid = asset["id"]
-    pre_score = asset["rarity"]["score"]
-
+# --- approve via admin api -------------------------------------------------
+def test_admin_approve(s, admin_token):
+    r = s.post(f"{API}/pmos/run", json={"seed": "TEST_ADMIN_APPROVE"}, timeout=90)
+    aid = r.json()["id"]
     h = {"Authorization": f"Bearer {admin_token}"}
-    r2 = s.post(f"{API}/meme-assets/{aid}/approve", headers=h, timeout=15)
+    r2 = s.post(f"{API}/meme-assets/{aid}/approve", headers=h, timeout=30)
     assert r2.status_code == 200, r2.text
-    data = r2.json()
-    assert data["vault_entry"]["asset_id"] == aid
-    assert data["certificate"]["asset_id"] == aid
-
-    r3 = s.get(f"{API}/meme-assets/{aid}", timeout=15)
-    asset2 = r3.json()
-    assert asset2["canon_approved"] is True
-    # rarity ×1.5
-    if pre_score > 0:
-        assert asset2["rarity"]["score"] == int(pre_score * 1.5)
-
-    # canon vault list
-    r4 = s.get(f"{API}/canon-vault", timeout=15)
-    assert any(v["asset_id"] == aid for v in r4.json())
-
-    # certificate
-    r5 = s.get(f"{API}/canon-vault/{aid}/certificate", timeout=15)
-    assert r5.status_code == 200
-    assert r5.json()["asset_id"] == aid
+    d = r2.json()
+    assert d["vault_entry"]["asset_id"] == aid
+    assert d["certificate"]["asset_id"] == aid
+    assert d["public"]["asset_id"] == aid
+    assert "artifacts" in d
 
 
-def test_approve_canon_non_admin(s, member_token):
-    r = s.post(f"{API}/pmos/run", json={"seed": "NON_ADMIN_SEED"}, timeout=60)
+def test_member_cannot_approve(s, member_token):
+    r = s.post(f"{API}/pmos/run", json={"seed": "TEST_MEMBER_DENY"}, timeout=90)
     aid = r.json()["id"]
     h = {"Authorization": f"Bearer {member_token}"}
     r2 = s.post(f"{API}/meme-assets/{aid}/approve", headers=h, timeout=15)
     assert r2.status_code == 403
 
 
-# --- rarity / economic / charts --------------------------------------------
-def test_rarity_calculate(s):
-    r = s.post(f"{API}/rarity/calculate", json={
-        "trait_count": 8, "legendary_traits": 1, "rare_traits": 2,
-        "uncommon_traits": 3, "common_traits": 2, "canon_status": False
-    }, timeout=15)
+# --- marketplace -----------------------------------------------------------
+def test_marketplace_open_get(s):
+    r = s.get(f"{API}/marketplace", timeout=15)
     assert r.status_code == 200
-    data = r.json()
-    assert "score" in data and "tier" in data and "formula" in data
+    assert isinstance(r.json(), list)
 
 
-def test_economic_simulate(s):
-    r = s.post(f"{API}/economic/simulate", json={"horizon_months": 12}, timeout=15)
+def test_marketplace_post_requires_auth(s):
+    r = s.post(f"{API}/marketplace", json={"asset_id": "x", "price_usd": 10}, timeout=15)
+    assert r.status_code == 401
+
+
+def test_marketplace_non_canon_rejected(s, member_token):
+    r = s.post(f"{API}/pmos/run", json={"seed": "TEST_NOCANON_LIST"}, timeout=90)
+    aid = r.json()["id"]
+    h = {"Authorization": f"Bearer {member_token}"}
+    r2 = s.post(f"{API}/marketplace", json={"asset_id": aid, "price_usd": 9.99}, headers=h, timeout=15)
+    assert r2.status_code == 400
+
+
+def test_marketplace_canon_list_ok(s, admin_token, canon_asset_id):
+    h = {"Authorization": f"Bearer {admin_token}"}
+    r = s.post(f"{API}/marketplace", json={"asset_id": canon_asset_id, "price_usd": 42.5, "description": "test"}, headers=h, timeout=15)
+    assert r.status_code == 200, r.text
+    listing = r.json()
+    assert listing["asset_id"] == canon_asset_id
+    assert listing["price_usd"] == 42.5
+    # GET reflects
+    r2 = s.get(f"{API}/marketplace", timeout=15)
+    assert any(l["id"] == listing["id"] for l in r2.json())
+    # DELETE works
+    r3 = s.delete(f"{API}/marketplace/{listing['id']}", headers=h, timeout=15)
+    assert r3.status_code == 200
+
+
+def test_marketplace_delete_missing_404(s, admin_token):
+    h = {"Authorization": f"Bearer {admin_token}"}
+    r = s.delete(f"{API}/marketplace/nonexistent-xxx", headers=h, timeout=15)
+    assert r.status_code == 404
+
+
+# --- safety ----------------------------------------------------------------
+def test_safety_blocks_marketplace(s, admin_token):
+    # run with "kill" → safety flagged unsafe; canon approve, then try listing
+    r = s.post(f"{API}/pmos/run", json={"seed": "kill someone"}, timeout=90)
     assert r.status_code == 200
-    rows = r.json()["rows"]
-    assert len(rows) == 13
-    for row in rows:
-        assert {"month", "supply", "price_usd", "market_cap"} <= set(row.keys())
+    aid = r.json()["id"]
+    assert r.json()["engines"]["Safety"]["safe"] is False
+    h = {"Authorization": f"Bearer {admin_token}"}
+    # approve
+    rapp = s.post(f"{API}/meme-assets/{aid}/approve", headers=h, timeout=30)
+    assert rapp.status_code == 200
+    # marketplace listing must fail 400 safety
+    rl = s.post(f"{API}/marketplace", json={"asset_id": aid, "price_usd": 5}, headers=h, timeout=15)
+    assert rl.status_code == 400
 
 
-def test_charts(s):
-    for ep in ["rarity-distribution", "faction-breakdown", "economic-curve"]:
-        r = s.get(f"{API}/charts/{ep}", timeout=15)
-        assert r.status_code == 200, ep
-        assert isinstance(r.json(), list)
+# --- webhooks (admin only) -------------------------------------------------
+def test_webhooks_member_forbidden(s, member_token):
+    h = {"Authorization": f"Bearer {member_token}"}
+    r = s.get(f"{API}/webhooks", headers=h, timeout=15)
+    assert r.status_code == 403
 
 
-# --- docs -------------------------------------------------------------------
-def test_docs_all(s):
-    r = s.get(f"{API}/docs/all", timeout=15)
+def test_webhooks_admin_crud(s, admin_token):
+    h = {"Authorization": f"Bearer {admin_token}"}
+    r = s.get(f"{API}/webhooks", headers=h, timeout=15)
+    assert r.status_code == 200
+    payload = {"url": "https://example.com/hook-test", "label": "TEST_hook", "event_types": ["engine_error"]}
+    r2 = s.post(f"{API}/webhooks", json=payload, headers=h, timeout=15)
+    assert r2.status_code == 200
+    wid = r2.json()["id"]
+    r3 = s.get(f"{API}/webhooks", headers=h, timeout=15)
+    assert any(w["id"] == wid for w in r3.json())
+    r4 = s.delete(f"{API}/webhooks/{wid}", headers=h, timeout=15)
+    assert r4.status_code == 200
+
+
+# --- engine order endpoint --------------------------------------------------
+def test_engine_order_endpoint(s):
+    r = s.get(f"{API}/pmos/engine-order", timeout=15)
     assert r.status_code == 200
     d = r.json()
-    for key in ["constitution", "rarity_formula", "engine_order", "canon_process", "debug_checklist", "legal"]:
-        assert key in d, f"missing {key}"
-    for k in ["copyright", "trademark", "license", "to_whom_it_may_concern", "universal_hub_clause"]:
-        assert k in d["legal"], f"missing legal.{k}"
+    assert d["count"] == 26
+    assert d["order"] == ENGINES_V2

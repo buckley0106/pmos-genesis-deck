@@ -14,6 +14,8 @@ import ControlDeck from "@/pages/ControlDeck";
 import DebugDashboard from "@/pages/DebugDashboard";
 import Legal from "@/pages/Legal";
 import Login from "@/pages/Login";
+import Marketplace from "@/pages/Marketplace";
+import PublicCanon from "@/pages/PublicCanon";
 
 function App() {
   return (
@@ -25,6 +27,8 @@ function App() {
             <Route path="/assets" element={<MemeAssetViewer />} />
             <Route path="/assets/:id" element={<MemeAssetViewer />} />
             <Route path="/canon" element={<CanonVault />} />
+            <Route path="/marketplace" element={<Marketplace />} />
+            <Route path="/public/:id" element={<PublicCanon />} />
             <Route path="/governance" element={<Governance />} />
             <Route path="/rarity" element={<RarityCalculator />} />
             <Route path="/economic" element={<EconomicSimulator />} />
