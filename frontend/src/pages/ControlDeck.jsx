@@ -33,7 +33,7 @@ export default function ControlDeck() {
       </div>
 
       <div className="grid sm:grid-cols-3 gap-3">
-        <Tile icon={Activity} label="Engine health" value={`${healthy}/15`} accent="cyan" testId="tile-health" sub={`${errors} error${errors !== 1 ? "s" : ""}`}/>
+        <Tile icon={Activity} label="Engine health" value={`${healthy}/${engines.length || 26}`} accent="cyan" testId="tile-health" sub={`${errors} error${errors !== 1 ? "s" : ""}`}/>
         <Tile icon={Vault} label="Canon entries" value={totalCanon} accent="fuchsia" testId="tile-canon" />
         <Tile icon={FileWarning} label="Events (24h sample)" value={events.length} accent="emerald" testId="tile-events"/>
       </div>

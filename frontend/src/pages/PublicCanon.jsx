@@ -19,12 +19,12 @@ export default function PublicCanon() {
   })(); }, [id]);
 
   function share() {
-    const url = `${BACKEND}/canon/${id}`;
+    const url = `${BACKEND}/api/canon/${id}/page`;
     if (navigator.share) navigator.share({ title: "PMOS•WMEU Canon", url });
     else { navigator.clipboard?.writeText(url); toast.success("Public canon URL copied"); }
   }
   function copyUrl() {
-    navigator.clipboard?.writeText(`${BACKEND}/canon/${id}`); toast.success("Copied");
+    navigator.clipboard?.writeText(`${BACKEND}/api/canon/${id}/page`); toast.success("Copied");
   }
 
   if (error) return <div className="pmos-card p-8 pmos-meta" data-testid="public-error">{error}</div>;
@@ -54,7 +54,7 @@ export default function PublicCanon() {
         <div className="flex gap-2 flex-wrap">
           <button onClick={share} className="pmos-btn-primary flex items-center gap-1.5" data-testid="public-share-button"><Share2 size={12}/> Share</button>
           <button onClick={copyUrl} className="pmos-btn-secondary flex items-center gap-1.5"><Copy size={12}/> Copy URL</button>
-          <a href={`${BACKEND}/canon/${id}`} target="_blank" rel="noreferrer" className="pmos-btn-secondary flex items-center gap-1.5" data-testid="public-open-server-page"><ExternalLink size={12}/> Open server page</a>
+          <a href={`${BACKEND}/api/canon/${id}/page`} target="_blank" rel="noreferrer" className="pmos-btn-secondary flex items-center gap-1.5" data-testid="public-open-server-page"><ExternalLink size={12}/> Open server page</a>
         </div>
       </div>
 

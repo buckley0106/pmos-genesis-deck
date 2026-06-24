@@ -1,0 +1,33 @@
+{
+  "summary": "Iteration 3 re-test of v2.0 deltas after fixes. ALL three iteration_2 issues are resolved: (1) Backend pytest 21/21 PASS — added test_canon_html_404_for_unknown, updated test_canon_html_page + test_canon_html_403_for_non_canon to hit /api/canon/{id}/page, repurposed test_safety_blocks_marketplace → test_safety_blocks_approve which asserts 400 + 'Safety engine' + 'cannot canonize' in detail. (2) Control Deck Engine Health tile renders '26/26' (visually confirmed via screenshot). (3) PublicCanon 'Open server page' button data-testid='public-open-server-page' targets https://<host>/api/canon/{id}/page; the URL returns 200 text/html with og:image, og:url, og:title, twitter:card meta tags (confirmed by curl + grep).",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/backend_test.py",
+    "/app/test_reports/pytest/pytest_results.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "server.py still ~1320 lines — recommend split into routers/{pmos,canon,marketplace,webhooks,auth}.py after Day-1.",
+    "Two HTML route registrations (legacy @app.get('/canon/{asset_id}') + production @api.get('/canon/{asset_id}/page')) both call _render_public_canon_html — fine, but document the legacy alias is intentionally backend-only (ingress doesn't expose it). Consider removing legacy alias once nothing references it.",
+    "SAFETY_BLOCKLIST is still a hard-coded tuple in server.py — move to a config collection so admins can update at runtime without redeploy.",
+    "Pillow render_og can still raise if font assets unavailable — wrap to return placeholder PNG instead of 500."
+  ],
+  "updated_files": [
+    "/app/backend/tests/backend_test.py (updated 3 tests to use /api/canon/{id}/page; added test_canon_html_404_for_unknown; renamed test_safety_blocks_marketplace → test_safety_blocks_approve to assert 400 + safety detail)"
+  ],
+  "success_rate": {"backend": "100% (21/21 pytest)", "frontend": "100% on the three delta surfaces (Control Deck 26/26, PublicCanon button href, /api/canon/{id}/page server-rendered HTML with all OG/Twitter meta tags)"},
+  "test_credentials": "Admin patrick@buckleylabs.io / WMEU-2026-Admin! — verified via login + admin approve test. Member tokens minted on the fly via /api/auth/register.",
+  "seed_data_creation": "Pytest run created fresh TEST_* seeds (TEST_V2_XYZ, TEST_D, TEST_SSE_*, TEST_CANON_AUTO, TEST_NOTCANON, TEST_NOTCANON2, TEST_ADMIN_APPROVE, TEST_MEMBER_DENY, TEST_NOCANON_LIST, 'kill someone'). Unsafe seed asset no longer reaches canon — approve now hard-rejects with HTTP 400.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "All iteration_2 deltas verified. Public canon HTML now production-served at /api/canon/{asset_id}/page (200 + OG/Twitter meta). Legacy top-level /canon/{id} remains for local curl only — do NOT test it via the public REACT_APP_BACKEND_URL (ingress will route to React SPA). Safety enforcement is now upstream of canon: admin POST /api/meme-assets/{id}/approve → 400 'Asset failed Safety engine; cannot canonize' when engines.Safety.safe is false. test_safety_blocks_marketplace test was repurposed accordingly (it can no longer assert listing rejection since the asset never reaches canon). Frontend SSE 26-engine run and marketplace/admin/debug flows were verified in iteration_2 and not regressed; not re-exercised here.",
+  "rca of the issue": "Iteration_2 had two failing backend tests (test_canon_html_page, test_canon_html_403_for_non_canon) caused by FastAPI registering @app.get('/canon/{asset_id}') at the top-level app while the K8s ingress only proxies /api/* to backend. The main agent's fix added @api.get('/canon/{asset_id}/page') under the /api router (still backed by the same _render_public_canon_html helper) and updated the frontend PublicCanon button + canon_url in the rendered HTML to point at it. Pytests were updated to hit the new path; both now pass. Safety gate was added at _approve_canon (line ~656) to raise HTTPException(400, 'Asset failed Safety engine; cannot canonize') when engines.Safety.safe is False — verified by test_safety_blocks_approve with seed 'kill someone'. Control Deck denominator switched from hard-coded /15 to ${engines.length || 26} — verified via screenshot showing '26/26'."
+}

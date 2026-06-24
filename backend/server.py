@@ -487,7 +487,7 @@ def engine_public_canon_page(seed, ctx):
     return {
         "engine": "PublicCanonPage",
         "slug": slug,
-        "permalink_path": f"/canon/{{asset_id}}",
+        "permalink_path": f"/api/canon/{{asset_id}}/page",
         "og_path": f"/api/public/og/{{asset_id}}.png",
         "share_text": f"PMOS•WMEU canon: {ctx.get('Identity', {}).get('true_name', seed)}",
     }
@@ -630,12 +630,19 @@ async def _save_canon_artifacts(asset_id: str, asset: dict) -> dict:
     species = asset.get("engines", {}).get("Species", {}).get("name", "Entity")
     faction = asset.get("engines", {}).get("Faction", {}).get("name", "Unbound")
     ticker = asset.get("engines", {}).get("MemeCoinBinder", {}).get("ticker", "$MEME")
-    png = render_og(
-        seed=asset.get("seed", ""),
-        rarity_tier=asset.get("rarity", {}).get("tier", "common"),
-        rarity_score=asset.get("rarity", {}).get("score", 0),
-        faction=faction, species=species, ticker=ticker, asset_id=asset_id,
-    )
+    try:
+        png = render_og(
+            seed=asset.get("seed", ""),
+            rarity_tier=asset.get("rarity", {}).get("tier", "common"),
+            rarity_score=asset.get("rarity", {}).get("score", 0),
+            faction=faction, species=species, ticker=ticker, asset_id=asset_id,
+        )
+    except Exception as exc:
+        logger.warning(f"render_og failed: {exc}; using placeholder")
+        import io as _io
+        from PIL import Image as _Image
+        _img = _Image.new("RGB", (1200, 630), (5, 5, 10))
+        _buf = _io.BytesIO(); _img.save(_buf, "PNG"); png = _buf.getvalue()
     og = save_og_image(asset_id, png)
     return {"snapshot": snap, "og_image": og}
 
@@ -644,6 +651,9 @@ async def _approve_canon(asset_id: str) -> Dict[str, Any]:
     asset = await db.meme_assets.find_one({"id": asset_id}, {"_id": 0})
     if not asset:
         raise HTTPException(status_code=404, detail="Asset not found")
+    safe = asset.get("engines", {}).get("Safety", {}).get("safe", True)
+    if not safe:
+        raise HTTPException(status_code=400, detail="Asset failed Safety engine; cannot canonize")
     asset["canon_approved"] = True
     asset["rarity"] = compute_rarity(asset)
     await db.meme_assets.update_one({"id": asset_id}, {"$set": {"canon_approved": True, "rarity": asset["rarity"]}})
@@ -664,7 +674,7 @@ async def _approve_canon(asset_id: str) -> Dict[str, Any]:
     slug = asset.get("engines", {}).get("PublicCanonPage", {}).get("slug", asset_id[:8])
     public_doc = {
         "id": new_id(), "asset_id": asset_id, "slug": slug,
-        "url": f"/canon/{asset_id}",
+        "url": f"/api/canon/{asset_id}/page",
         "og_url": f"/api/public/og/{asset_id}.png",
         "published_at": now_iso(),
     }
@@ -1069,9 +1079,17 @@ async def public_canon_json(asset_id: str):
 
 @app.get("/canon/{asset_id}", response_class=HTMLResponse)
 async def public_canon_page(asset_id: str):
-    """Server-rendered public canon page (Layer 3 — public CDN substitute).
-    OG meta tags are critical for shareability.
-    """
+    """Top-level alias (curl/local-only — K8s ingress proxies /api/* only)."""
+    return await _render_public_canon_html(asset_id)
+
+
+@api.get("/canon/{asset_id}/page", response_class=HTMLResponse)
+async def public_canon_page_via_api(asset_id: str):
+    """Server-rendered public canon page (Layer 3 substitute) — under /api so K8s ingress routes it."""
+    return await _render_public_canon_html(asset_id)
+
+
+async def _render_public_canon_html(asset_id: str) -> HTMLResponse:
     asset = await db.meme_assets.find_one({"id": asset_id}, {"_id": 0})
     if not asset:
         raise HTTPException(status_code=404, detail="Asset not found")
@@ -1086,7 +1104,7 @@ async def public_canon_page(asset_id: str):
     rarity = asset.get("rarity", {})
     base = PUBLIC_BASE_URL or ""
     og_url = f"{base}/api/public/og/{asset_id}.png"
-    canon_url = f"{base}/canon/{asset_id}"
+    canon_url = f"{base}/api/canon/{asset_id}/page"
     return HTMLResponse(f"""<!doctype html>
 <html lang="en"><head>
 <meta charset="utf-8"/>

@@ -115,12 +115,14 @@ def canon_asset_id(s):
 
 
 def test_canon_html_page(s, canon_asset_id):
-    r = s.get(f"{BASE_URL}/canon/{canon_asset_id}", timeout=30)
+    r = s.get(f"{API}/canon/{canon_asset_id}/page", timeout=30)
     assert r.status_code == 200
     assert "text/html" in r.headers.get("content-type", "")
     body = r.text
     assert 'property="og:image"' in body
     assert 'property="og:url"' in body
+    assert 'property="og:title"' in body
+    assert 'name="twitter:card"' in body
     assert f"/api/public/og/{canon_asset_id}.png" in body
 
 
@@ -148,8 +150,13 @@ def test_public_canon_json_404_for_non_canon(s):
 def test_canon_html_403_for_non_canon(s):
     r = s.post(f"{API}/pmos/run", json={"seed": "TEST_NOTCANON2"}, timeout=90)
     aid = r.json()["id"]
-    r2 = s.get(f"{BASE_URL}/canon/{aid}", timeout=15)
+    r2 = s.get(f"{API}/canon/{aid}/page", timeout=15)
     assert r2.status_code == 403
+
+
+def test_canon_html_404_for_unknown(s):
+    r = s.get(f"{API}/canon/nonexistent-asset-xyz/page", timeout=15)
+    assert r.status_code == 404
 
 
 # --- approve via admin api -------------------------------------------------
@@ -216,19 +223,17 @@ def test_marketplace_delete_missing_404(s, admin_token):
 
 
 # --- safety ----------------------------------------------------------------
-def test_safety_blocks_marketplace(s, admin_token):
-    # run with "kill" → safety flagged unsafe; canon approve, then try listing
+def test_safety_blocks_approve(s, admin_token):
+    # run with "kill" → safety flagged unsafe; admin approve must now be rejected 400
     r = s.post(f"{API}/pmos/run", json={"seed": "kill someone"}, timeout=90)
     assert r.status_code == 200
     aid = r.json()["id"]
     assert r.json()["engines"]["Safety"]["safe"] is False
     h = {"Authorization": f"Bearer {admin_token}"}
-    # approve
     rapp = s.post(f"{API}/meme-assets/{aid}/approve", headers=h, timeout=30)
-    assert rapp.status_code == 200
-    # marketplace listing must fail 400 safety
-    rl = s.post(f"{API}/marketplace", json={"asset_id": aid, "price_usd": 5}, headers=h, timeout=15)
-    assert rl.status_code == 400
+    assert rapp.status_code == 400, rapp.text
+    assert "Safety engine" in rapp.json().get("detail", "")
+    assert "cannot canonize" in rapp.json().get("detail", "")
 
 
 # --- webhooks (admin only) -------------------------------------------------
