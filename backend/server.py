@@ -529,8 +529,8 @@ def engine_sse_live_tick(seed, ctx):
 ENGINE_ORDER = [
     "Blueprint", "Biological", "Energy", "Artifact", "Species", "Plant", "Faction", "Lore",
     "Identity", "Continuity", "Influence", "SocialGraph", "UniverseTime", "Safety", "RateLimit",
-    "MemeBinding", "MemeCoinBinder", "NFTMint", "Economic", "Marketplace", "Governance",
-    "CanonVaultConnector", "PublicCanonPage", "Webhook", "ChartEngine", "SSELiveTick",
+    "MemeBinding", "MemeCoinBinder", "Governance", "Economic", "CanonVaultConnector",
+    "PublicCanonPage", "NFTMint", "Marketplace", "Webhook", "ChartEngine", "SSELiveTick",
 ]
 
 ENGINE_FUNCS = {
