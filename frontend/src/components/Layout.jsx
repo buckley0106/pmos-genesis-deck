@@ -13,14 +13,16 @@ const NAV = [
   { to: "/rarity", label: "Rarity", icon: Sigma, id: "rarity" },
   { to: "/economic", label: "Econ Sim", icon: Activity, id: "economic" },
   { to: "/charts", label: "Charts", icon: LineChart, id: "charts" },
-  { to: "/control-deck", label: "Control", icon: ShieldCheck, id: "control-deck" },
-  { to: "/debug", label: "Debug", icon: Bug, id: "debug" },
+  { to: "/control-deck", label: "Control", icon: ShieldCheck, id: "control-deck", adminOnly: true },
+  { to: "/debug", label: "Debug", icon: Bug, id: "debug", adminOnly: true },
   { to: "/legal", label: "Legal", icon: ScrollText, id: "legal" },
 ];
 
 export function Layout({ children }) {
   const { user, logout } = useAuth();
   const nav = useNavigate();
+  const isAdmin = user?.role === "admin";
+  const visibleNav = NAV.filter((n) => !n.adminOnly || isAdmin);
   return (
     <div className="min-h-screen flex flex-col text-slate-200">
       <header className="sticky top-0 z-50 pmos-glass border-b border-cyan-500/15">
@@ -35,7 +37,7 @@ export function Layout({ children }) {
             </div>
           </NavLink>
           <div className="hidden lg:flex items-center gap-1 flex-1 overflow-x-auto">
-            {NAV.map((n) => (
+            {visibleNav.map((n) => (
               <NavLink
                 key={n.to}
                 to={n.to}
@@ -71,7 +73,7 @@ export function Layout({ children }) {
         </div>
         {/* mobile nav */}
         <div className="lg:hidden flex items-center gap-1 px-3 pb-2 overflow-x-auto">
-          {NAV.map((n) => (
+          {visibleNav.map((n) => (
             <NavLink
               key={n.to}
               to={n.to}

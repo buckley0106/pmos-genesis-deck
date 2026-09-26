@@ -2,13 +2,37 @@ import { useEffect, useRef, useState } from "react";
 import { api, API, formatApiErrorDetail } from "@/lib/api";
 import { JsonViewer } from "@/components/JsonViewer";
 import { EngineNode } from "@/components/EngineNode";
-import { Play, Shuffle, Rocket, Sparkles, ChevronRight, Radio } from "lucide-react";
+import { useAuth } from "@/context/AuthContext";
+import { Play, Shuffle, Rocket, Sparkles, ChevronRight, Radio, Sprout, Wand2 } from "lucide-react";
 import { toast } from "sonner";
 import { Link } from "react-router-dom";
 
 const SAMPLE_SEEDS = ["WABOOT-PRIME-001", "P.BUCK-GENESIS", "PEPE-OVERLORD-9", "VOID-CHAD-XIII", "DOGE-ASCENDED-VII", "GLYPH-COIN-2026"];
 
+const CREATION_STAGES = [
+  "Weaving cosmic blueprint…",
+  "Encoding memetic DNA…",
+  "Igniting energy signature…",
+  "Forging the artifact…",
+  "Awakening the species…",
+  "Rooting the flora…",
+  "Rallying the faction…",
+  "Composing the lore…",
+  "Registering identity…",
+  "Threading continuity…",
+  "Measuring influence…",
+  "Mapping social graph…",
+  "Anchoring universe time…",
+  "Sealing the coin…",
+  "Publishing to canon…",
+  "Minting the artifact…",
+  "Listing in the market…",
+  "Broadcasting live ticks…",
+];
+
 export default function Dashboard() {
+  const { user } = useAuth();
+  const isAdmin = user?.role === "admin";
   const [seed, setSeed] = useState("WABOOT-PRIME-001");
   const [enrichAI, setEnrichAI] = useState(false);
   const [running, setRunning] = useState(false);
@@ -157,22 +181,28 @@ export default function Dashboard() {
       </section>
 
       <section>
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="pmos-h3">26-Engine Pipeline</h2>
-          <Link to="/control-deck" className="pmos-meta hover:text-cyan-300 flex items-center gap-1" data-testid="link-control-deck">
-            view control deck <ChevronRight size={12} />
-          </Link>
-        </div>
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-6 gap-3" data-testid="engine-grid">
-          {statuses.map((s, i) => (
-            <EngineNode key={s.engine_name} name={s.engine_name} status={s.status} index={i} version={s.engine_version} lastRun={s.last_run} />
-          ))}
-        </div>
+        {isAdmin ? (
+          <>
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="pmos-h3">26-Engine Pipeline <span className="pmos-badge pmos-badge-magenta ml-2">admin</span></h2>
+              <Link to="/control-deck" className="pmos-meta hover:text-cyan-300 flex items-center gap-1" data-testid="link-control-deck">
+                view control deck <ChevronRight size={12} />
+              </Link>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-6 gap-3" data-testid="engine-grid">
+              {statuses.map((s, i) => (
+                <EngineNode key={s.engine_name} name={s.engine_name} status={s.status} index={i} version={s.engine_version} lastRun={s.last_run} />
+              ))}
+            </div>
+          </>
+        ) : (
+          <CreationStudio running={running} progress={progress} completed={completed} totalEngines={statuses.length || 26} seed={seed} result={result} />
+        )}
       </section>
 
-      {ticks.length > 0 && (
+      {isAdmin && ticks.length > 0 && (
         <section className="pmos-card p-3" data-testid="live-tick-feed">
-          <div className="pmos-eyebrow mb-2 flex items-center gap-2"><Radio size={12} className="text-cyan-300 animate-pulse"/> Live tick feed</div>
+          <div className="pmos-eyebrow mb-2 flex items-center gap-2"><Radio size={12} className="text-cyan-300 animate-pulse"/> Live tick feed <span className="pmos-badge pmos-badge-magenta ml-1">admin</span></div>
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-1 max-h-48 overflow-y-auto">
             {ticks.map((t, i) => (
               <div key={i} className={`font-mono text-[11px] flex justify-between gap-2 px-2 py-1 border-l-2 ${t.kind === "error" ? "border-rose-500 text-rose-300" : t.kind === "done" ? "border-emerald-400 text-emerald-300" : "border-cyan-400 text-cyan-300"}`}>
@@ -201,3 +231,71 @@ export default function Dashboard() {
     </div>
   );
 }
+
+function CreationStudio({ running, progress, completed, totalEngines, seed, result }) {
+  const stageIdx = Math.min(CREATION_STAGES.length - 1, Math.floor((progress / 100) * CREATION_STAGES.length));
+  const stageText = running ? CREATION_STAGES[stageIdx] : (result ? "Meme Asset ready." : "Awaiting seed launch.");
+
+  if (result && !running) {
+    const identity = result.engines?.Identity?.true_name || result.seed;
+    const epithet = result.engines?.Identity?.epithet;
+    const species = result.engines?.Species?.name;
+    const faction = result.engines?.Faction?.name;
+    const lore = result.engines?.Lore?.summary;
+    const ticker = result.engines?.MemeCoinBinder?.ticker;
+
+    return (
+      <div className="pmos-card-elevated p-6 sm:p-8 pmos-corner relative animate-fade-in" data-testid="creation-studio-result">
+        <div className="absolute inset-0 pmos-grid-bg opacity-15 pointer-events-none" />
+        <div className="relative">
+          <div className="pmos-eyebrow mb-2 flex items-center gap-2">
+            <Sprout size={12} className="text-emerald-300"/> Your Meme Civilization is born
+          </div>
+          <h2 className="pmos-h2">{identity}</h2>
+          {epithet && <div className="font-display text-fuchsia-300 text-lg mt-0.5">{epithet}</div>}
+          <div className="mt-3 flex gap-2 flex-wrap">
+            <span className="pmos-badge pmos-badge-magenta">{result.rarity?.tier}</span>
+            <span className="pmos-badge pmos-badge-success">score {result.rarity?.score}</span>
+            {ticker && <span className="pmos-badge pmos-badge-running">{ticker}</span>}
+            {species && <span className="pmos-badge pmos-badge-idle">{species}</span>}
+            {faction && <span className="pmos-badge pmos-badge-idle">{faction}</span>}
+          </div>
+          {lore && (
+            <p className="mt-4 text-slate-300 text-sm leading-relaxed max-w-3xl">{lore}</p>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="pmos-card-elevated p-6 sm:p-8 pmos-corner relative overflow-hidden" data-testid="creation-studio">
+      <div className="absolute inset-0 pmos-grid-bg opacity-20 pointer-events-none" />
+      {running && (
+        <div className="absolute inset-x-0 -top-px h-24 bg-gradient-to-b from-cyan-500/10 to-transparent animate-scan-line pointer-events-none" />
+      )}
+      <div className="relative flex items-start gap-4">
+        <div className={`w-16 h-16 grid place-items-center border ${running ? "border-cyan-400 animate-pulse-cyan" : "border-[#1A1D2E]"}`} style={{ boxShadow: running ? "0 0 24px rgba(0,240,255,0.35)" : undefined }}>
+          <Wand2 size={28} className={running ? "text-cyan-300 animate-spin" : "text-slate-500"} strokeWidth={1.4}/>
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="pmos-eyebrow mb-1">Creation Studio</div>
+          <h2 className="pmos-h3">{running ? "Forging your civilization…" : "Ready to birth a Meme Civilization"}</h2>
+          <div className="font-mono text-cyan-300 text-sm mt-2 truncate">{stageText}</div>
+          <div className="mt-3 font-mono text-[11px] text-slate-500">seed · <span className="text-slate-300">{seed}</span></div>
+          <div className="mt-4">
+            <div className="flex justify-between items-center mb-1 pmos-meta">
+              <span>{running ? "Weaving canon-grade data" : "Awaiting launch"}</span>
+              <span>{progress}%</span>
+            </div>
+            <div className="h-1.5 bg-[#111322] overflow-hidden">
+              <div className="h-full bg-gradient-to-r from-cyan-400 via-fuchsia-500 to-cyan-400 transition-all" style={{ width: `${progress}%` }} />
+            </div>
+            <div className="pmos-meta mt-2">{completed}/{totalEngines} systems synchronized</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
