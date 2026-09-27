@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { EngineNode } from "@/components/EngineNode";
 import WebhookManager from "@/components/WebhookManager";
+import SafetyManager from "@/components/SafetyManager";
 import { ShieldCheck, Activity, FileWarning, BookOpen, Vault } from "lucide-react";
 
 export default function ControlDeck() {
@@ -48,6 +49,7 @@ export default function ControlDeck() {
       </section>
 
       <WebhookManager />
+      <SafetyManager />
 
       <div className="grid lg:grid-cols-2 gap-5">
         <section className="pmos-card p-4" data-testid="event-timeline-panel">

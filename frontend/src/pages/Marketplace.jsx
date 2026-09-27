@@ -5,6 +5,8 @@ import { useAuth } from "@/context/AuthContext";
 import { Store, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
+const BACKEND = process.env.REACT_APP_BACKEND_URL;
+
 export default function Marketplace() {
   const { user } = useAuth();
   const [listings, setListings] = useState([]);
@@ -93,22 +95,36 @@ export default function Marketplace() {
 
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
         {listings.map((l) => (
-          <article key={l.id} className="pmos-card p-4 flex flex-col" data-testid={`listing-${l.id.slice(0,8)}`}>
-            <div className="flex items-center justify-between mb-2">
-              <span className="pmos-badge pmos-badge-magenta">{l.rarity?.tier}</span>
-              <span className="font-display font-bold text-cyan-300 text-xl">${l.price_usd}</span>
-            </div>
-            <div className="font-display text-lg text-white truncate">{l.seed}</div>
-            {l.description && <p className="text-slate-400 text-xs mt-1 line-clamp-2">{l.description}</p>}
-            <div className="pmos-meta mt-1">seller {l.seller_email}</div>
-            <div className="pmos-meta">listed {new Date(l.created_at).toLocaleDateString()}</div>
-            <div className="mt-3 flex gap-2">
-              <Link to={`/public/${l.asset_id}`} className="pmos-btn-secondary flex-1 text-center" data-testid={`view-public-${l.id.slice(0,8)}`}>View canon page</Link>
-              {user?.email === l.seller_email && (
-                <button onClick={() => delist(l.id)} className="pmos-btn-danger flex items-center gap-1" data-testid={`delist-${l.id.slice(0,8)}`}>
-                  <Trash2 size={11}/> Delist
-                </button>
-              )}
+          <article key={l.id} className="pmos-card flex flex-col overflow-hidden" data-testid={`listing-${l.id.slice(0,8)}`}>
+            <Link to={`/public/${l.asset_id}`} className="block group relative" data-testid={`listing-thumb-${l.id.slice(0,8)}`}>
+              <img
+                src={`${BACKEND}/api/public/og/${l.asset_id}.png`}
+                alt={`${l.seed} OG thumbnail`}
+                className="w-full aspect-[1200/630] object-cover border-b border-[#1A1D2E] group-hover:opacity-90 transition-opacity"
+                loading="lazy"
+                onError={(e) => { e.currentTarget.style.display = "none"; }}
+              />
+              <div className="absolute top-2 left-2 flex gap-1">
+                <span className="pmos-badge pmos-badge-magenta">{l.rarity?.tier}</span>
+                <span className="pmos-badge pmos-badge-success">canon</span>
+              </div>
+            </Link>
+            <div className="p-4 flex-1 flex flex-col">
+              <div className="flex items-center justify-between mb-1">
+                <div className="font-display text-lg text-white truncate">{l.seed}</div>
+                <span className="font-display font-bold text-cyan-300 text-xl">${l.price_usd}</span>
+              </div>
+              {l.description && <p className="text-slate-400 text-xs mt-1 line-clamp-2">{l.description}</p>}
+              <div className="pmos-meta mt-1">seller {l.seller_email}</div>
+              <div className="pmos-meta">listed {new Date(l.created_at).toLocaleDateString()}</div>
+              <div className="mt-3 flex gap-2">
+                <Link to={`/public/${l.asset_id}`} className="pmos-btn-secondary flex-1 text-center" data-testid={`view-public-${l.id.slice(0,8)}`}>View canon page</Link>
+                {user?.email === l.seller_email && (
+                  <button onClick={() => delist(l.id)} className="pmos-btn-danger flex items-center gap-1" data-testid={`delist-${l.id.slice(0,8)}`}>
+                    <Trash2 size={11}/> Delist
+                  </button>
+                )}
+              </div>
             </div>
           </article>
         ))}
