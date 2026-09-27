@@ -1,0 +1,32 @@
+{
+  "summary": "Ran full regression pytest suite after router split + verified new safety-blocklist CRUD, marketplace OG thumbnail, and legacy /canon route removal. Frontend Playwright verified admin-only SafetyManager, marketplace thumbnail, anon vs admin nav, and dashboard variants. 26/28 backend tests pass; 2 tests fail because engine order changed during router split (regression vs. baseline). All frontend spot-checks pass.",
+  "backend_issues": {
+    "critical": [
+      {"endpoint": "GET /api/ and GET /api/pmos/engine-order", "issue": "ENGINE_ORDER in engines.py changed during router split. New order emits Governance/Economic/CanonVaultConnector/PublicCanonPage BEFORE NFTMint/Marketplace. Previous baseline (iteration_3) order was ...MemeBinding, MemeCoinBinder, NFTMint, Economic, Marketplace, Governance, CanonVaultConnector, PublicCanonPage, Webhook, ChartEngine, SSELiveTick. New order is ...MemeBinding, MemeCoinBinder, Governance, Economic, CanonVaultConnector, PublicCanonPage, NFTMint, Marketplace, Webhook, ChartEngine, SSELiveTick. This regresses test_root_v2 + test_engine_order_endpoint and, more importantly, NFTMint now runs AFTER PublicCanonPage, so any OG-page rendering that depends on token_id/chain_hash will lack them at render time. Fix: restore prior ordering in /app/backend/engines.py ENGINE_ORDER list.", "priority": "HIGH"}
+    ],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": ["/app/backend/tests/backend_test.py", "/app/test_reports/pytest/pytest_results.xml"],
+  "action_items": [
+    "Restore ENGINE_ORDER in /app/backend/engines.py to the pre-split ordering so test_root_v2 + test_engine_order_endpoint pass again AND NFTMint runs before PublicCanonPage (so token_id / chain_hash are available when the public canon page is generated)."
+  ],
+  "critical_code_review_comments": [
+    "engines.py ENGINE_ORDER regression (see above) — NFTMint now executes after PublicCanonPage.",
+    "GET /api/safety/blocklist is admin-only (returns 401 for anon). Task spec text implies it may have been intended as public read; if admin-only is deliberate, update spec, otherwise loosen the dep. Currently POST + DELETE + GET all require admin — consistent, but frontend Marketplace/OG doesn't need it so ok.",
+    "ControlDeck.load() uses Promise.all with no try/catch — if any of the 4 endpoints fails the whole panel silently stops updating; consider individual try/catch or Promise.allSettled.",
+    "Nav label says 'Control' but route is '/control-deck'. Minor UX mismatch — /control returns empty page (no 404 fallback). Consider adding a catch-all 404 route."
+  ],
+  "updated_files": ["/app/backend/tests/backend_test.py"],
+  "success_rate": {"backend": "93% (26/28 pytest)", "frontend": "100% on all spot-checked flows (SafetyManager CRUD, marketplace thumbnail, nav visibility, dashboard variants)"},
+  "test_credentials": "Admin patrick@buckleylabs.io / WMEU-2026-Admin! — login confirmed. Member registered on-the-fly via /api/auth/register.",
+  "seed_data_creation": "Added 4 new safety-blocklist tests + 1 marketplace og_url test + 1 openapi legacy-route test + 1 root edition test to backend_test.py. Test-created safety words (testword*, htw*, uitst*) are all removed by the tests themselves.",
+  "retest_needed": true,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Backend pytest suite lives at /app/backend/tests/backend_test.py. It now covers 28 tests. Two fail because of engine-order regression from the router split — this is a real product regression, not a test bug. All new v2.0 features (safety blocklist CRUD, hot-reload safety enforcement, marketplace og_url field, legacy /canon removed from OpenAPI, edition='Universe-Class', frontend SafetyManager + marketplace thumbnails + admin-gated nav) verified working. Note the frontend route is /control-deck (not /control) despite the nav label saying CONTROL.",
+  "rca of the issue": "During the server.py -> routers/ split, the ENGINE_ORDER list in /app/backend/engines.py lines 296-301 was reshuffled. The pre-split order (per iteration_3 baseline) placed NFTMint immediately after MemeCoinBinder and then Economic-Marketplace-Governance-CanonVaultConnector-PublicCanonPage-Webhook-ChartEngine-SSELiveTick. The new order places Governance/Economic/CanonVaultConnector/PublicCanonPage BEFORE NFTMint/Marketplace. Mitigation: swap the two slices back so ENGINE_ORDER ends with ...MemeBinding, MemeCoinBinder, NFTMint, Economic, Marketplace, Governance, CanonVaultConnector, PublicCanonPage, Webhook, ChartEngine, SSELiveTick. Reproduction: pytest backend/tests/backend_test.py::test_root_v2 backend/tests/backend_test.py::test_engine_order_endpoint."
+}

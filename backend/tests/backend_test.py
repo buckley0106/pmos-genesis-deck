@@ -20,8 +20,8 @@ ADMIN_PASSWORD = "WMEU-2026-Admin!"
 ENGINES_V2 = [
     "Blueprint", "Biological", "Energy", "Artifact", "Species", "Plant", "Faction", "Lore",
     "Identity", "Continuity", "Influence", "SocialGraph", "UniverseTime", "Safety", "RateLimit",
-    "MemeBinding", "MemeCoinBinder", "NFTMint", "Economic", "Marketplace", "Governance",
-    "CanonVaultConnector", "PublicCanonPage", "Webhook", "ChartEngine", "SSELiveTick",
+    "MemeBinding", "MemeCoinBinder", "Governance", "Economic", "CanonVaultConnector",
+    "PublicCanonPage", "NFTMint", "Marketplace", "Webhook", "ChartEngine", "SSELiveTick",
 ]
 
 
@@ -264,3 +264,89 @@ def test_engine_order_endpoint(s):
     d = r.json()
     assert d["count"] == 26
     assert d["order"] == ENGINES_V2
+
+
+# --- v2.0 regression: safety blocklist CRUD (admin-only) -------------------
+def test_safety_blocklist_get_defaults(s, admin_token):
+    h = {"Authorization": f"Bearer {admin_token}"}
+    r = s.get(f"{API}/safety/blocklist", headers=h, timeout=15)
+    assert r.status_code == 200, r.text
+    d = r.json()
+    assert "words" in d
+    assert isinstance(d["words"], list)
+    # sorted
+    assert d["words"] == sorted(d["words"])
+    # defaults present
+    for w in ["kill", "csam", "exploit-violence"]:
+        assert w in d["words"], f"default '{w}' missing"
+
+
+def test_safety_blocklist_post_requires_admin(s, member_token):
+    h = {"Authorization": f"Bearer {member_token}"}
+    r = s.post(f"{API}/safety/blocklist", json={"word": "TEST_denied"}, headers=h, timeout=15)
+    assert r.status_code in (401, 403)
+
+
+def test_safety_blocklist_add_and_delete(s, admin_token):
+    h = {"Authorization": f"Bearer {admin_token}"}
+    word = f"testword{uuid.uuid4().hex[:6]}"
+    # add
+    r = s.post(f"{API}/safety/blocklist", json={"word": word}, headers=h, timeout=15)
+    assert r.status_code == 200, r.text
+    # idempotent
+    r2 = s.post(f"{API}/safety/blocklist", json={"word": word}, headers=h, timeout=15)
+    assert r2.status_code == 200
+    # verify persisted
+    rg = s.get(f"{API}/safety/blocklist", headers=h, timeout=15)
+    assert word in rg.json()["words"]
+    # delete
+    rd = s.delete(f"{API}/safety/blocklist/{word}", headers=h, timeout=15)
+    assert rd.status_code == 200
+    rg2 = s.get(f"{API}/safety/blocklist", headers=h, timeout=15)
+    assert word not in rg2.json()["words"]
+
+
+def test_safety_blocklist_hot_reload(s, admin_token):
+    """Adding a word should flag subsequent PMOS runs without restart."""
+    h = {"Authorization": f"Bearer {admin_token}"}
+    word = f"htw{uuid.uuid4().hex[:6]}"
+    try:
+        s.post(f"{API}/safety/blocklist", json={"word": word}, headers=h, timeout=15)
+        r = s.post(f"{API}/pmos/run", json={"seed": f"benign seed with {word} inside"}, timeout=90)
+        assert r.status_code == 200
+        safety = r.json()["engines"]["Safety"]
+        assert safety["safe"] is False, safety
+        assert word in [f.lower() for f in safety.get("flags", [])], safety
+    finally:
+        s.delete(f"{API}/safety/blocklist/{word}", headers=h, timeout=15)
+
+
+# --- v2.0 regression: marketplace og_url field -----------------------------
+def test_marketplace_listing_has_og_url(s, admin_token, canon_asset_id):
+    h = {"Authorization": f"Bearer {admin_token}"}
+    r = s.post(f"{API}/marketplace", json={"asset_id": canon_asset_id, "price_usd": 12.34}, headers=h, timeout=15)
+    assert r.status_code == 200, r.text
+    listing = r.json()
+    assert listing.get("og_url") == f"/api/public/og/{canon_asset_id}.png"
+    # cleanup
+    s.delete(f"{API}/marketplace/{listing['id']}", headers=h, timeout=15)
+
+
+# --- v2.0 regression: legacy /canon/{id} removed from OpenAPI --------------
+def test_openapi_no_legacy_canon_route(s):
+    # openapi.json is not exposed via /api ingress; hit backend directly
+    r = s.get("http://localhost:8001/openapi.json", timeout=15)
+    assert r.status_code == 200
+    paths = r.json().get("paths", {})
+    # legacy top-level route must be gone
+    assert "/canon/{asset_id}" not in paths
+    # new prefixed route must exist
+    assert "/api/canon/{asset_id}/page" in paths
+
+
+# --- v2.0 regression: root endpoint edition --------------------------------
+def test_root_edition(s):
+    r = s.get(f"{API}/", timeout=15)
+    d = r.json()
+    assert d.get("edition") == "Universe-Class"
+
